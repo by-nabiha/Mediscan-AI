@@ -1,11 +1,5 @@
-import torch
-import numpy as np
 from triage_engine import calculate_triage, test_worked_scenario
-
-# Mock output class for ViT prediction testing
-class MockViTOutput:
-    def __init__(self, logits):
-        self.logits = logits
+from skin_model import _format_results
 
 def run_all_tests():
     print("=" * 60)
@@ -16,64 +10,23 @@ def run_all_tests():
     test_worked_scenario()
     
     # Test 2: Skin Model Overlap Scenario
-    print("Test 2: Skin Model overlapping classification test...")
+    print("Test 2: Skin Model overlapping classification formatting test...")
     
-    # Normal labels mapping
-    id2label = {
-        0: "nv",     # Melanocytic nevus
-        1: "mel",    # Melanoma
-        2: "bkl",    # Seborrheic keratosis
-        3: "bcc",    # Basal cell carcinoma
-        4: "akiec",  # Actinic keratosis
-        5: "vasc",   # Vascular lesion
-        6: "df"      # Dermatofibroma
-    }
+    # Mock output results from HuggingFace pipeline format
+    mock_raw_results = [
+        {"label": "melanoma", "score": 0.48},
+        {"label": "melanocytic_nevus", "score": 0.41},
+        {"label": "seborrheic_keratosis", "score": 0.05},
+        {"label": "normal", "score": 0.06}
+    ]
     
-    # Create fake logits where Melanoma (idx 1) and Melanocytic nevus (idx 0) are close
-    fake_logits = torch.zeros(1, 7)
-    fake_logits[0, 1] = 2.5 # Melanoma
-    fake_logits[0, 0] = 2.3 # Melanocytic nevus
+    result = _format_results(mock_raw_results)
     
-    # Softmax check
-    probs = torch.softmax(fake_logits, dim=1).squeeze().numpy()
-    
-    SKIN_CLASSES_MAP = {
-        "mel": "Melanoma",
-        "nv": "Melanocytic nevus",
-        "bkl": "Seborrheic keratosis",
-        "bcc": "Basal cell carcinoma",
-        "akiec": "Actinic keratosis",
-        "vasc": "Vascular lesion",
-        "df": "Dermatofibroma"
-    }
-    
-    raw_predictions = {}
-    for idx, prob in enumerate(probs):
-        label_code = id2label[idx].lower()
-        readable_label = SKIN_CLASSES_MAP.get(label_code, label_code)
-        raw_predictions[readable_label] = float(prob) * 100
-        
-    sorted_preds = sorted(raw_predictions.items(), key=lambda x: x[1], reverse=True)
-    above_floor = [(label, round(score, 2)) for label, score in sorted_preds if score >= 30.0]
-    
-    is_uncertain = False
-    status_message = ""
-    
-    if len(above_floor) >= 2:
-        top_1_label, top_1_score = above_floor[0]
-        top_2_label, top_2_score = above_floor[1]
-        
-        if (top_1_score - top_2_score) <= 15.0:
-            is_uncertain = True
-            status_message = f"possible {top_1_label} or {top_2_label} — uncertain, recommend in-person exam"
-            
     print("\nOverlap test outputs:")
-    for cls, val in raw_predictions.items():
-        print(f"  {cls}: {val:.2f}%")
-        
-    print(f"\nFindings above 30% floor: {above_floor}")
-    print(f"Uncertainty flag: {is_uncertain}")
-    print(f"Outcome Message: {status_message}")
+    print(f"  Top condition    : {result['top_condition']}")
+    print(f"  Confidence       : {result['confidence_score']}%")
+    print(f"  Uncertain result : {'Yes' if result['is_uncertain'] else 'No'}")
+    print(f"  Clinical note    : {result['clinical_note']}")
     print("=" * 60)
     
     # Test 3: Multi-condition Override Triage

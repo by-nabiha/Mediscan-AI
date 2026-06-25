@@ -1,93 +1,177 @@
-import torch
-import torch.nn.functional as F
-from transformers import ViTImageProcessor, ViTForImageClassification
+import base64
+import io
 from PIL import Image
-import numpy as np
+from transformers import pipeline
 
-# ---------- Pretrained HAM10000 Skin Lesion Model ----------
-# Using a ViT model trained on ISIC / HAM10000 skin lesions
-SKIN_MODEL_NAME = "marmal88/vit-skin-cancer"
+MODEL_NAME = "imfarzanansari/skintelligent-25"
 
-print("Loading HuggingFace Skin Cancer ViT Model...")
-processor = ViTImageProcessor.from_pretrained(SKIN_MODEL_NAME)
-model = ViTForImageClassification.from_pretrained(SKIN_MODEL_NAME)
-model.eval()
-print("Skin classification model loaded successfully")
+CONFIDENCE_FLOOR = 0.30
+UNCERTAINTY_GAP = 0.15
 
-# Model class labels map (matching marmal88/vit-skin-cancer or general HAM10000 format)
-# Index mapping typical for HAM10000 datasets:
-# nv: Melanocytic nevi, mel: Melanoma, bkl: Seborrheic keratosis, bcc: Basal cell carcinoma,
-# akiec: Actinic keratoses, vasc: Vascular lesions, df: Dermatofibroma
-SKIN_CLASSES_MAP = {
-    "mel": "Melanoma",
-    "nv": "Melanocytic nevus",
-    "bkl": "Seborrheic keratosis",
-    "bcc": "Basal cell carcinoma",
-    "akiec": "Actinic keratosis",
-    "vasc": "Vascular lesion",
-    "df": "Dermatofibroma"
-}
+_classifier = None
 
-def predict_skin_lesion(image_path, confidence_floor=30.0):
+
+def load_model():
+    global _classifier
+    if _classifier is None:
+        print(f"Loading skin disease model: {MODEL_NAME}")
+        _classifier = pipeline(
+            "image-classification",
+            model=MODEL_NAME,
+            top_k=None,
+        )
+        print("Skin disease model loaded successfully")
+    return _classifier
+
+
+def predict_from_path(image_path: str) -> dict:
     """
-    Runs inference on the skin image using pretrained ViT:
-    - Normalizes outputs using Softmax (sums to 100%).
-    - Filters categories above 30% floor.
-    - Adds uncertainty message if top two predictions are within 15% margin.
+    Run skin disease classification on an image file.
+
+    Args:
+        image_path: Path to the image file (JPG, PNG, etc.)
+
+    Returns:
+        See _format_results() for full output schema.
     """
+    classifier = load_model()
     image = Image.open(image_path).convert("RGB")
-    inputs = processor(images=image, return_tensors="pt")
-    
-    with torch.no_grad():
-        outputs = model(**inputs)
-        probs = torch.softmax(outputs.logits, dim=1).squeeze().numpy()
-    
-    # Map predictions to human readable labels
-    id2label = model.config.id2label
-    raw_predictions = {}
-    for idx, prob in enumerate(probs):
-        label_code = id2label[idx].lower()
-        readable_label = SKIN_CLASSES_MAP.get(label_code, label_code)
-        raw_predictions[readable_label] = float(prob) * 100 # convert to percentage
-        
-    # Sort predictions
-    sorted_preds = sorted(raw_predictions.items(), key=lambda x: x[1], reverse=True)
-    
-    # Filter above 30% confidence floor
-    above_floor = [(label, round(score, 2)) for label, score in sorted_preds if score >= confidence_floor]
-    
+    raw = classifier(image)
+    return _format_results(raw)
+
+
+def predict_from_base64(base64_str: str) -> dict:
+    """
+    Run skin disease classification on a base64-encoded image string.
+    Pass only the raw base64 data — no 'data:image/...;base64,' prefix.
+
+    Args:
+        base64_str: Raw base64-encoded image bytes
+
+    Returns:
+        See _format_results() for full output schema.
+    """
+    classifier = load_model()
+    image_bytes = base64.b64decode(base64_str)
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    raw = classifier(image)
+    return _format_results(raw)
+
+
+def _format_results(raw_results: list) -> dict:
+    """
+    Convert HuggingFace pipeline output to a structured clinical response.
+
+    All classes are evaluated. Only those at or above CONFIDENCE_FLOOR (30%)
+    are surfaced as 'flagged_conditions'. When two or more flagged conditions
+    are within UNCERTAINTY_GAP (15%) of each other, the result is marked
+    uncertain and a clinical note is added recommending an in-person exam.
+
+    Output schema:
+    {
+        "confidence_score": float,          # top condition probability × 100
+        "top_condition": str,               # highest-probability class
+        "conditions": [...],                # all classes, sorted by probability desc
+        "flagged_conditions": [...],        # only classes >= 30% confidence floor
+        "is_uncertain": bool,               # True when 2+ flagged classes are close
+        "clinical_note": str                # human-readable interpretation
+    }
+    """
+    all_conditions = sorted(
+        [
+            {
+                "condition": item["label"].replace("_", " ").title(),
+                "probability": round(float(item["score"]), 4),
+            }
+            for item in raw_results
+        ],
+        key=lambda x: x["probability"],
+        reverse=True,
+    )
+
+    top = all_conditions[0] if all_conditions else {"condition": "Unknown", "probability": 0.0}
+    confidence_score = round(top["probability"] * 100, 1)
+
+    flagged = [c for c in all_conditions if c["probability"] >= CONFIDENCE_FLOOR]
+
     is_uncertain = False
-    status_message = ""
-    
-    # Handle multiple overlapping skin conditions
-    if len(above_floor) >= 2:
-        top_1_label, top_1_score = above_floor[0]
-        top_2_label, top_2_score = above_floor[1]
-        
-        # If difference between top 2 is <= 15%, mark as uncertain
-        if (top_1_score - top_2_score) <= 15.0:
+    clinical_note = ""
+
+    if len(flagged) == 0:
+        clinical_note = (
+            f"No condition reached the {int(CONFIDENCE_FLOOR * 100)}% confidence "
+            "threshold. Image quality may be insufficient or the presentation may "
+            "not match training data. Recommend in-person clinical evaluation."
+        )
+    elif len(flagged) == 1:
+        cond = flagged[0]["condition"]
+        pct = round(flagged[0]["probability"] * 100, 1)
+        clinical_note = (
+            f"Model is {pct}% confident in {cond}. "
+            "Consult a dermatologist for confirmation."
+        )
+    else:
+        top_prob = flagged[0]["probability"]
+        second_prob = flagged[1]["probability"]
+        gap = top_prob - second_prob
+
+        if gap <= UNCERTAINTY_GAP:
             is_uncertain = True
-            status_message = f"possible {top_1_label} or {top_2_label} — uncertain, recommend in-person exam"
-            
-    if not status_message:
-        if len(above_floor) > 0:
-            status_message = f"Dominant finding: {above_floor[0][0]} ({above_floor[0][1]:.1f}%)"
+            names = " or ".join(c["condition"] for c in flagged)
+            clinical_note = (
+                f"Possible {names} — uncertain. "
+                "Two or more conditions appear with similar confidence, which may "
+                "indicate overlapping or co-occurring conditions. "
+                "Recommend in-person dermatological exam for accurate diagnosis."
+            )
         else:
-            status_message = "Normal / No specific anomalies detected"
-            
+            cond = flagged[0]["condition"]
+            pct = round(top_prob * 100, 1)
+            others = ", ".join(c["condition"] for c in flagged[1:])
+            clinical_note = (
+                f"Primary finding: {cond} ({pct}%). "
+                f"Secondary possibilities above threshold: {others}. "
+                "Consult a dermatologist for confirmation."
+            )
+
     return {
-        "status_message": status_message,
+        "confidence_score": confidence_score,
+        "top_condition": top["condition"],
+        "conditions": all_conditions,
+        "flagged_conditions": flagged,
         "is_uncertain": is_uncertain,
-        "findings_above_floor": above_floor,
-        "all_scores": {k: round(v, 2) for k, v in raw_predictions.items()}
+        "clinical_note": clinical_note,
     }
 
+
 if __name__ == "__main__":
-    # Test execution if an image is provided
     import sys
-    if len(sys.argv) > 1:
-        res = predict_skin_lesion(sys.argv[1])
-        print("PREDICTION RESULT:")
-        print(res)
+
+    if len(sys.argv) < 2:
+        print("Usage: python skin_model.py <image_path>")
+        print("\nNo image provided — running with a synthetic test image.")
+        img = Image.new("RGB", (224, 224), color=(180, 120, 90))
+        img.save("test_skin.jpg")
+        result = predict_from_path("test_skin.jpg")
     else:
-        print("Please provide an image path to test skin prediction (e.g. python skin_model.py test_lesion.jpg)")
+        result = predict_from_path(sys.argv[1])
+
+    print("\nSkin Disease Analysis")
+    print("=" * 50)
+    print(f"  Top condition    : {result['top_condition']}")
+    print(f"  Confidence       : {result['confidence_score']}%")
+    print(f"  Uncertain result : {'Yes' if result['is_uncertain'] else 'No'}")
+    print(f"\n  Clinical note:\n  {result['clinical_note']}")
+
+    print(f"\n  Flagged conditions (>= {int(CONFIDENCE_FLOOR * 100)}% threshold):")
+    if result["flagged_conditions"]:
+        for c in result["flagged_conditions"]:
+            bar = "#" * int(c["probability"] * 40)
+            print(f"    {c['condition']:<35} {c['probability']*100:5.1f}%  {bar}")
+    else:
+        print("    None reached the confidence floor.")
+
+    print("\n  Full softmax output:")
+    for c in result["conditions"]:
+        bar = "#" * int(c["probability"] * 40)
+        print(f"    {c['condition']:<35} {c['probability']*100:5.1f}%  {bar}")
