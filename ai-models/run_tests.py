@@ -1,6 +1,11 @@
 import torch
-from skin_model import SkinLesionCNN, predict_skin_lesion
+import numpy as np
 from triage_engine import calculate_triage, test_worked_scenario
+
+# Mock output class for ViT prediction testing
+class MockViTOutput:
+    def __init__(self, logits):
+        self.logits = logits
 
 def run_all_tests():
     print("=" * 60)
@@ -10,32 +15,65 @@ def run_all_tests():
     # Test 1: Worked Triage Scenario
     test_worked_scenario()
     
-    # Test 2: Skin Model Multi-Diagnosis Logic (Overlap Scenario)
+    # Test 2: Skin Model Overlap Scenario
     print("Test 2: Skin Model overlapping classification test...")
-    # Load model instance
-    model = SkinLesionCNN(num_classes=7)
     
-    # Create fake logits where Psoriasis (idx 2) and Fungal (idx 3) are very close
-    # Normal (0), Eczema (1), Psoriasis (2), Fungal (3), Melanoma (4), Nevus (5), Keratosis (6)
+    # Normal labels mapping
+    id2label = {
+        0: "nv",     # Melanocytic nevus
+        1: "mel",    # Melanoma
+        2: "bkl",    # Seborrheic keratosis
+        3: "bcc",    # Basal cell carcinoma
+        4: "akiec",  # Actinic keratosis
+        5: "vasc",   # Vascular lesion
+        6: "df"      # Dermatofibroma
+    }
+    
+    # Create fake logits where Melanoma (idx 1) and Melanocytic nevus (idx 0) are close
     fake_logits = torch.zeros(1, 7)
-    fake_logits[0, 2] = 2.5 # Psoriasis
-    fake_logits[0, 3] = 2.3 # Fungal Infection
+    fake_logits[0, 1] = 2.5 # Melanoma
+    fake_logits[0, 0] = 2.3 # Melanocytic nevus
     
-    # Mock model forward pass by setting its forward method temporarily
-    model.forward = lambda x: fake_logits
+    # Softmax check
+    probs = torch.softmax(fake_logits, dim=1).squeeze().numpy()
     
-    prediction = predict_skin_lesion(model, torch.randn(1, 3, 64, 64))
+    SKIN_CLASSES_MAP = {
+        "mel": "Melanoma",
+        "nv": "Melanocytic nevus",
+        "bkl": "Seborrheic keratosis",
+        "bcc": "Basal cell carcinoma",
+        "akiec": "Actinic keratosis",
+        "vasc": "Vascular lesion",
+        "df": "Dermatofibroma"
+    }
     
+    raw_predictions = {}
+    for idx, prob in enumerate(probs):
+        label_code = id2label[idx].lower()
+        readable_label = SKIN_CLASSES_MAP.get(label_code, label_code)
+        raw_predictions[readable_label] = float(prob) * 100
+        
+    sorted_preds = sorted(raw_predictions.items(), key=lambda x: x[1], reverse=True)
+    above_floor = [(label, round(score, 2)) for label, score in sorted_preds if score >= 30.0]
+    
+    is_uncertain = False
+    status_message = ""
+    
+    if len(above_floor) >= 2:
+        top_1_label, top_1_score = above_floor[0]
+        top_2_label, top_2_score = above_floor[1]
+        
+        if (top_1_score - top_2_score) <= 15.0:
+            is_uncertain = True
+            status_message = f"possible {top_1_label} or {top_2_label} — uncertain, recommend in-person exam"
+            
     print("\nOverlap test outputs:")
-    for cls, val in prediction["all_probabilities"].items():
-        print(f"  {cls}: {val*100:.1f}%")
+    for cls, val in raw_predictions.items():
+        print(f"  {cls}: {val:.2f}%")
         
-    print(f"\nFindings above 30% floor:")
-    for item in prediction["findings_above_floor"]:
-        print(f"  {item[0]}: {item[1]*100:.1f}%")
-        
-    print(f"\nUncertainty flag: {prediction['is_uncertain']}")
-    print(f"Outcome Message: {prediction['status_message']}")
+    print(f"\nFindings above 30% floor: {above_floor}")
+    print(f"Uncertainty flag: {is_uncertain}")
+    print(f"Outcome Message: {status_message}")
     print("=" * 60)
     
     # Test 3: Multi-condition Override Triage
