@@ -3,67 +3,122 @@ from transformers import pipeline
 classifier = pipeline(
     "text-classification",
     model="j-hartmann/emotion-english-distilroberta-base",
-    return_all_scores=True
+    top_k=None
 )
 
 print("Mental health model loaded successfully\n")
 
+# Each question now has its own valid set of accepted answers
 QUESTIONS = [
-    "How are you feeling today? (e.g. happy, sad, anxious, angry, hopeless, fine)",
-    "How was your sleep last night? (e.g. good, bad, couldn't sleep, very tired)",
-    "How is your energy level? (e.g. energetic, very tired, exhausted, normal)",
-    "Are you enjoying things you usually like? (e.g. yes, no, not really, nothing interests me)",
-    "How are your stress levels? (e.g. relaxed, stressed, very stressed, overwhelmed)",
-    "Any other feelings you want to share? (describe in your own words)"
+    {
+        "text": "How are you feeling today?",
+        "options": ["happy", "sad", "anxious", "angry", "hopeless", "fine"]
+    },
+    {
+        "text": "How was your sleep last night?",
+        "options": ["good", "bad", "couldn't sleep", "very tired"]
+    },
+    {
+        "text": "How is your energy level?",
+        "options": ["energetic", "very tired", "exhausted", "normal"]
+    },
+    {
+        "text": "Are you enjoying things you usually like?",
+        "options": ["yes", "no", "not really", "nothing interests me"]
+    },
+    {
+        "text": "How are your stress levels?",
+        "options": ["relaxed", "stressed", "very stressed", "overwhelmed"]
+    },
 ]
 
+# Q6 is the only free-text question - no restrictions
+FREE_TEXT_QUESTION = "Any other feelings you want to share? (describe in your own words)"
+
+
 RISK_EMOTIONS = {
-    "sadness": 70,
-    "fear": 65,
-    "anger": 70,
-    "disgust": 65,
+    "sadness": 35,
+    "fear": 30,
+    "anger": 35,
+    "disgust": 30,
 }
+
+def ask_multiple_choice(question_data, q_num):
+    """Forces the user to pick one of the listed options - no other words allowed."""
+    print(f"Q{q_num}: {question_data['text']}")
+    options = question_data["options"]
+    print("Choose one: " + " | ".join(options))
+
+    while True:
+        answer = input("Your answer: ").strip().lower()
+        if answer in [opt.lower() for opt in options]:
+            print()
+            return answer
+        print(f"  Invalid input. Please type exactly one of: {', '.join(options)}\n")
+
+
+def ask_free_text(question_text, q_num):
+    """Free text - user can write anything."""
+    print(f"Q{q_num}: {question_text}")
+    answer = input("Your answer: ").strip()
+    print()
+    return answer
 
 
 def collect_user_responses():
-    print("Please answer these short questions:\n")
+    print("Please answer these questions:\n")
     responses = []
-    for i, question in enumerate(QUESTIONS, 1):
-        print(f"Q{i}: {question}")
-        answer = input("Your answer: ").strip()
+
+    for i, question_data in enumerate(QUESTIONS, 1):
+        answer = ask_multiple_choice(question_data, i)
         responses.append(answer)
-        print()
-    return " ".join(responses)
+
+    free_answer = ask_free_text(FREE_TEXT_QUESTION, len(QUESTIONS) + 1)
+    responses.append(free_answer)
+
+    return responses
 
 
-def get_mental_health_result(text):
+def analyze_single_answer(text):
+    if not text:
+        return None
     raw = classifier(text[:512], truncation=True)
+    items = raw[0] if isinstance(raw[0], list) else raw
+    return {item["label"]: round(item["score"] * 100, 2) for item in items}
 
-    if isinstance(raw[0], list):
-        items = raw[0]
-    else:
-        items = raw
 
-    scores = {}
-    for item in items:
-        scores[item["label"]] = round(item["score"] * 100, 2)
+def get_mental_health_result(responses):
+    per_answer_scores = []
+    for answer in responses:
+        scores = analyze_single_answer(answer)
+        if scores:
+            per_answer_scores.append(scores)
+
+    if not per_answer_scores:
+        raise ValueError("No valid answers to analyze")
+
+    all_emotions = per_answer_scores[0].keys()
+    combined_scores = {}
+    for emotion in all_emotions:
+        values = [s[emotion] for s in per_answer_scores]
+        combined_scores[emotion] = round(sum(values) / len(values), 2)
 
     crossed = []
     for emotion, threshold in RISK_EMOTIONS.items():
-        if scores.get(emotion, 0) >= threshold:
+        if combined_scores.get(emotion, 0) >= threshold:
             crossed.append({
                 "emotion": emotion,
-                "score": scores[emotion],
+                "score": combined_scores[emotion],
                 "threshold": threshold
             })
 
     count_crossed = len(crossed)
 
     risk_score = round(
-        scores.get("sadness", 0) * 0.35 +
-        scores.get("fear", 0) * 0.30 +
-        scores.get("anger", 0) * 0.20 +
-        scores.get("disgust", 0) * 0.15,
+        combined_scores.get("sadness", 0) * 0.35 +
+        combined_scores.get("fear", 0) * 0.30 +
+        combined_scores.get("anger", 0) * 0.20 +
+        combined_scores.get("disgust", 0) * 0.15,
         2
     )
 
@@ -78,7 +133,8 @@ def get_mental_health_result(text):
         "status": status,
         "risk_score": risk_score,
         "crossed": crossed,
-        "all_scores": scores
+        "all_scores": combined_scores,
+        "per_question_breakdown": per_answer_scores
     }
 
 
@@ -87,7 +143,7 @@ def print_result(result):
     print("       MENTAL HEALTH ANALYSIS RESULT")
     print("=" * 50)
 
-    print("\n--- Emotion Scores ---")
+    print("\n--- Averaged Emotion Scores (across all answers) ---")
     for emotion, score in result["all_scores"].items():
         bar = "█" * int(score / 5)
         print(f"  {emotion:<12}: {score:>6.2f}%  {bar}")
@@ -117,7 +173,7 @@ def print_result(result):
 
 
 if __name__ == "__main__":
-    user_text = collect_user_responses()
+    responses = collect_user_responses()
     print("Analyzing your responses...\n")
-    result = get_mental_health_result(user_text)
+    result = get_mental_health_result(responses)
     print_result(result)
