@@ -112,7 +112,6 @@ def get_xray_summary(combined_result):
             "all_scores": tier1_results
         }
 
-
 def build_dashboard_message(summary):
     status = summary["status"]
 
@@ -120,12 +119,9 @@ def build_dashboard_message(summary):
         return summary["message"]
 
     if status == "send_to_triage":
-        disease = summary["source_disease"]
-        score = summary["composite_input"]
-        return (f"X-ray screening complete. No single condition crossed the urgent threshold "
-                f"(highest signal: {disease} at {score}%). This result is being sent to the "
-                f"overall triage system, which will combine it with your other screening "
-                f"results to determine the final recommendation.")
+        return ("X-ray screening complete. No individual condition reached the threshold "
+                 "needed for an urgent flag on its own. This result is being combined with "
+                 "your other screening results to determine your final recommendation.")
 
     if status == "xray_single_urgent":
         disease = summary["urgent_disease"]["disease"]
@@ -143,7 +139,6 @@ def build_dashboard_message(summary):
                 f"require immediate attention.")
 
     return "Screening complete."
-
 
 # ---------- FULL PIPELINE: gate -> crop -> both models -> summary ----------
 def run_full_xray_pipeline(image_path):
@@ -181,6 +176,7 @@ def run_full_xray_pipeline(image_path):
     summary = get_xray_summary(combined_result)
     summary["gate_check"] = gate_result
     summary["dashboard_message"] = build_dashboard_message(summary)
+    print("DEBUG all_scores:", summary["all_scores"])
     return summary
 
 
