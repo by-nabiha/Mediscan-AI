@@ -1,12 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { Activity } from "lucide-react";
+import { Activity, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
@@ -16,7 +18,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isReportPage = location.startsWith("/report/");
 
-  // Hide header on report printing to satisfy print stylesheet rules
   return (
     <div className="min-h-screen flex flex-col">
       {!isReportPage && (
@@ -69,43 +70,57 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </nav>
               )}
 
-              {/* Language Selector Pill */}
-              <div className="inline-flex rounded-full bg-muted p-1 border border-border/60">
-                <button
-                  onClick={() => setLanguage("en")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
-                    language === "en"
-                      ? "bg-card text-primary shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+              <div className="flex items-center gap-2">
+                {/* Theme Toggle */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
-                  EN
-                </button>
-                <button
-                  onClick={() => setLanguage("ur")}
-                  className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
-                    language === "ur"
-                      ? "bg-card text-primary shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  UR
-                </button>
+                  {theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
+
+                {/* Language Selector Pill */}
+                <div className="inline-flex rounded-full bg-muted p-1 border border-border/60">
+                  <button
+                    onClick={() => setLanguage("en")}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                      language === "en"
+                        ? "bg-card text-primary shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => setLanguage("ur")}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full transition-all cursor-pointer ${
+                      language === "ur"
+                        ? "bg-card text-primary shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    UR
+                  </button>
+                </div>
               </div>
 
               {/* Auth Buttons */}
               {user ? (
                 <div className="flex items-center gap-4">
-                  {/* Mobile Navigation Menu button or links */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={handleLogout}
-                      className="text-sm text-muted-foreground hover:text-destructive cursor-pointer"
-                    >
-                      {t("nav.logout")}
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={handleLogout}
+                    className="text-sm text-muted-foreground hover:text-destructive cursor-pointer"
+                  >
+                    {t("nav.logout")}
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-4">

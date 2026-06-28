@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ScreeningSessionProvider } from "@/contexts/ScreeningSessionContext";
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute";
 
@@ -34,13 +35,14 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <LanguageProvider>
-          <ScreeningSessionProvider>
-            <div className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
-              <Switch>
-                {/* Public Routes */}
+    <ThemeProvider defaultTheme="system" storageKey="mediscan-theme">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <LanguageProvider>
+            <ScreeningSessionProvider>
+              <div className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
+                <Switch>
+                  {/* Public Routes */}
                 <Route path="/" component={Home} />
                 <Route path="/login" component={Login} />
                 <Route path="/register" component={Register} />
@@ -104,12 +106,13 @@ export default function App() {
                     </div>
                   )}
                 </Route>
-              </Switch>
-              <Toaster position="top-right" closeButton richColors />
-            </div>
-          </ScreeningSessionProvider>
-        </LanguageProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+                </Switch>
+                <Toaster position="top-right" closeButton richColors />
+              </div>
+            </ScreeningSessionProvider>
+          </LanguageProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
