@@ -251,8 +251,5 @@ Contributions are welcome:
 
 ---
 
-## Author
 
-Nabiha Nasir
-AI and Software Engineering Enthusiast
-Focused on building real-world AI systems in healthcare
+
