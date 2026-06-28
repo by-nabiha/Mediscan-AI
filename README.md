@@ -70,38 +70,6 @@
 
 ---
 
-## 🏗️ Architecture
-
-MediScan AI uses a **3-tier scalable architecture**:
-
-### 📌 System Flow (Top → Down)
-
-```mermaid
-flowchart TD
-
-A[User / Browser] 
-    --> B[Frontend (React + Vite)]
-
-B -->|API Calls| C[Backend (Node.js + Express)]
-
-C -->|Auth & Logic| D[(PostgreSQL Database)]
-
-C -->|Requests| E[AI Microservice (Flask)]
-
-E --> F[ML Models]
-
-F --> F1[X-Ray Model]
-F --> F2[Skin Model]
-F --> F3[Diabetes Model]
-F --> F4[NLP Mental Health Model]
-
-E -->|Predictions| C
-C -->|Response| B
-B -->|UI Output| A
-```
-
----
-
 ## 💻 Frontend
 
 * React 19 + Vite
