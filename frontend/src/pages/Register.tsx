@@ -23,12 +23,14 @@ const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  age: z.coerce.number().min(1, "Age is required").max(120, "Enter a valid age"),
+  gender: z.string().min(1, "Please select a gender"),
 });
 
 type FormData = z.infer<typeof schema>;
 
 const registerFn = createMutationFn<
-  { name: string; email: string; password: string },
+  { name: string; email: string; password: string; age: number; gender: string },
   AuthResponse
 >("/auth/register");
 
@@ -73,29 +75,54 @@ export default function Register() {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" {...register("name")} />
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" placeholder="e.g. Ahmed Khan" {...register("name")} />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...register("email")} />
+                <Input id="email" type="email" placeholder="you@example.com" {...register("email")} />
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email.message}</p>
                 )}
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input id="age" type="number" placeholder="e.g. 25" {...register("age")} />
+                  {errors.age && (
+                    <p className="text-sm text-destructive">{errors.age.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    {...register("gender")}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {errors.gender && (
+                    <p className="text-sm text-destructive">{errors.gender.message}</p>
+                  )}
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...register("password")} />
+                <Input id="password" type="password" placeholder="Min 6 characters" {...register("password")} />
                 {errors.password && (
                   <p className="text-sm text-destructive">
                     {errors.password.message}
                   </p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              <Button type="submit" className="w-full cursor-pointer" disabled={mutation.isPending}>
                 {mutation.isPending ? "Creating account..." : "Register"}
               </Button>
             </form>

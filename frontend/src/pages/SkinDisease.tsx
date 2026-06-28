@@ -120,7 +120,7 @@ export default function SkinDisease() {
       {
         onSuccess: (data) => {
           setTimeout(() => {
-            setScore("skin", data.confidenceScore);
+            setScore("skin", data.confidenceScore / 100);
             setSkinConditions(data.conditions);
             toast.success(`Evaluated ${data.conditions.length} potential conditions.`);
             setLocation("/screening");

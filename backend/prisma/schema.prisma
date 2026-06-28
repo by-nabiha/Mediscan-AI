@@ -1,0 +1,81 @@
+// This is your Prisma schema file for MediScan-AI
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── USER TABLE ───────────────────────────────────────────
+// Stores registered users (doctors / patients)
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique   // No two users can have the same email
+  password  String             // Will be hashed (encrypted) later
+  createdAt DateTime @default(now())
+
+  // A user can have many screening sessions
+  sessions  ScreeningSession[]
+}
+
+// ─── SCREENING SESSION TABLE ───────────────────────────────
+// Each time a patient goes through a screening, one session is created
+model ScreeningSession {
+  id          Int      @id @default(autoincrement())
+  userId      Int                         // Links to the User table
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  // A session can have results from multiple AI modules
+  xrayResult        XrayResult?
+  skinResult        SkinResult?
+  diabetesResult    DiabetesResult?
+  mentalHealthResult MentalHealthResult?
+}
+
+// ─── CHEST X-RAY RESULT TABLE ─────────────────────────────
+model XrayResult {
+  id          Int              @id @default(autoincrement())
+  sessionId   Int              @unique
+  session     ScreeningSession @relation(fields: [sessionId], references: [id])
+  diagnosis   String           // e.g., "Pneumonia", "Normal"
+  confidence  Float            // e.g., 0.87 (87%)
+  imagePath   String           // Path to the uploaded X-ray image
+  createdAt   DateTime         @default(now())
+}
+
+// ─── SKIN DISEASE RESULT TABLE ────────────────────────────
+model SkinResult {
+  id          Int              @id @default(autoincrement())
+  sessionId   Int              @unique
+  session     ScreeningSession @relation(fields: [sessionId], references: [id])
+  diagnosis   String           // e.g., "Melanoma", "Eczema"
+  confidence  Float            // e.g., 0.92 (92%)
+  imagePath   String           // Path to the uploaded skin image
+  createdAt   DateTime         @default(now())
+}
+
+// ─── DIABETES RISK RESULT TABLE ───────────────────────────
+model DiabetesResult {
+  id           Int              @id @default(autoincrement())
+  sessionId    Int              @unique
+  session      ScreeningSession @relation(fields: [sessionId], references: [id])
+  riskScore    Float            // e.g., 0.65 (65% risk)
+  riskLevel    String           // e.g., "High", "Medium", "Low"
+  createdAt    DateTime         @default(now())
+}
+
+// ─── MENTAL HEALTH RESULT TABLE ───────────────────────────
+model MentalHealthResult {
+  id           Int              @id @default(autoincrement())
+  sessionId    Int              @unique
+  session      ScreeningSession @relation(fields: [sessionId], references: [id])
+  diagnosis    String           // e.g., "Moderate Depression"
+  score        Float            // e.g., 0.71
+  createdAt    DateTime         @default(now())
+}

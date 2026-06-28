@@ -80,7 +80,7 @@ export default function DiabetesRisk() {
       { data: sanitized },
       {
         onSuccess: (res) => {
-          setScore("diabetes", res.confidenceScore);
+          setScore("diabetes", res.confidenceScore / 100);
           toast.success(`Screening Complete. Risk level: ${res.riskLevel.toUpperCase()}`);
           setLocation("/screening");
         },

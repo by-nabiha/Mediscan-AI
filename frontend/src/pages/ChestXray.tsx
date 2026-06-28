@@ -131,7 +131,7 @@ export default function ChestXray() {
       {
         onSuccess: (data) => {
           setTimeout(() => {
-            setScore("xray", data.confidenceScore);
+            setScore("xray", data.confidenceScore / 100);
             setXrayConditions(data.allConditions);
             toast.success(`Analysis Complete: ${data.topCondition}`);
             setLocation("/screening");

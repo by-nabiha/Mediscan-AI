@@ -146,32 +146,43 @@ def _format_results(raw_results: list) -> dict:
 
 if __name__ == "__main__":
     import sys
+    import json
 
-    if len(sys.argv) < 2:
-        print("Usage: python skin_model.py <image_path>")
-        print("\nNo image provided — running with a synthetic test image.")
-        img = Image.new("RGB", (224, 224), color=(180, 120, 90))
-        img.save("test_skin.jpg")
-        result = predict_from_path("test_skin.jpg")
+    if "--json" in sys.argv:
+        args = [a for a in sys.argv[1:] if a != "--json"]
+        path = args[0] if args else "test_skin.jpg"
+        # If no path and running synthetically
+        if not args:
+            img = Image.new("RGB", (224, 224), color=(180, 120, 90))
+            img.save("test_skin.jpg")
+        result = predict_from_path(path)
+        print(json.dumps(result))
     else:
-        result = predict_from_path(sys.argv[1])
+        if len(sys.argv) < 2:
+            print("Usage: python skin_model.py <image_path>")
+            print("\nNo image provided — running with a synthetic test image.")
+            img = Image.new("RGB", (224, 224), color=(180, 120, 90))
+            img.save("test_skin.jpg")
+            result = predict_from_path("test_skin.jpg")
+        else:
+            result = predict_from_path(sys.argv[1])
 
-    print("\nSkin Disease Analysis")
-    print("=" * 50)
-    print(f"  Top condition    : {result['top_condition']}")
-    print(f"  Confidence       : {result['confidence_score']}%")
-    print(f"  Uncertain result : {'Yes' if result['is_uncertain'] else 'No'}")
-    print(f"\n  Clinical note:\n  {result['clinical_note']}")
+        print("\nSkin Disease Analysis")
+        print("=" * 50)
+        print(f"  Top condition    : {result['top_condition']}")
+        print(f"  Confidence       : {result['confidence_score']}%")
+        print(f"  Uncertain result : {'Yes' if result['is_uncertain'] else 'No'}")
+        print(f"\n  Clinical note:\n  {result['clinical_note']}")
 
-    print(f"\n  Flagged conditions (>= {int(CONFIDENCE_FLOOR * 100)}% threshold):")
-    if result["flagged_conditions"]:
-        for c in result["flagged_conditions"]:
+        print(f"\n  Flagged conditions (>= {int(CONFIDENCE_FLOOR * 100)}% threshold):")
+        if result["flagged_conditions"]:
+            for c in result["flagged_conditions"]:
+                bar = "#" * int(c["probability"] * 40)
+                print(f"    {c['condition']:<35} {c['probability']*100:5.1f}%  {bar}")
+        else:
+            print("    None reached the confidence floor.")
+
+        print("\n  Full softmax output:")
+        for c in result["conditions"]:
             bar = "#" * int(c["probability"] * 40)
             print(f"    {c['condition']:<35} {c['probability']*100:5.1f}%  {bar}")
-    else:
-        print("    None reached the confidence floor.")
-
-    print("\n  Full softmax output:")
-    for c in result["conditions"]:
-        bar = "#" * int(c["probability"] * 40)
-        print(f"    {c['condition']:<35} {c['probability']*100:5.1f}%  {bar}")

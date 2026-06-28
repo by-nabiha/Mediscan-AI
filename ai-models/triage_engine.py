@@ -133,4 +133,13 @@ def test_worked_scenario():
     print("-" * 50)
 
 if __name__ == "__main__":
-    test_worked_scenario()
+    import json
+    if len(sys.argv) > 1:
+        try:
+            scores = json.loads(sys.argv[1])
+            result = calculate_triage(scores)
+            print(json.dumps(result))
+        except Exception as e:
+            print(json.dumps({"error": str(e)}))
+    else:
+        test_worked_scenario()

@@ -57,11 +57,11 @@ export default function MentalHealth() {
           if (res.isCrisis) {
             // Crisis state detected - show crisis overlay and prevent proceeding
             setCrisisResult(res);
-            setScore("mentalHealth", res.confidenceScore);
+            setScore("mentalHealth", res.confidenceScore / 100);
             toast.warning("Crisis Support resources triggered. Please review immediately.");
           } else {
             // Normal path - save score and redirect to ScreeningHub
-            setScore("mentalHealth", res.confidenceScore);
+            setScore("mentalHealth", res.confidenceScore / 100);
             toast.success("Mental health assessment complete.");
             setLocation("/screening");
           }
