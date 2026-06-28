@@ -1,9 +1,9 @@
 # 🏥 MediScan AI
 
-**MediScan AI** is a production-ready, AI-powered digital health screening platform designed to assist in preliminary clinical assessment. It leverages Computer Vision, NLP, and risk-scoring algorithms to provide fast, intelligent health insights.
+**MediScan AI** is a production-ready, AI-powered digital health screening platform designed for preliminary clinical assessment. It combines Computer Vision, NLP, and risk-scoring models to deliver fast and intelligent health insights.
 
-> ⚠️ **Clinical Disclaimer**
-> MediScan AI is not a medical diagnostic tool. It is intended only for preliminary screening. All outputs must be reviewed by a licensed healthcare professional before making any medical decisions.
+> ⚠️ **Disclaimer**
+> This system is not a medical diagnostic tool. All results must be reviewed by a licensed healthcare professional.
 
 ---
 
@@ -11,125 +11,122 @@
 
 ### 🔬 Multi-Modal AI Screening
 
-* **🩻 Chest X-Ray Analysis**
+* **Chest X-Ray Analysis**
 
-  * Detects pulmonary anomalies
-  * Uses DenseNet (torchxrayvision) and Vision Transformers (ViT)
+  * Detects pulmonary abnormalities
+  * Uses DenseNet and Vision Transformers
 
-* **🔍 Skin Disease Detection**
+* **Skin Disease Detection**
 
-  * Identifies dermatological abnormalities
-  * Works on uploaded image data
+  * Identifies dermatological conditions
+  * Works on uploaded images
 
-* **🩸 Diabetes Risk Calculator**
+* **Diabetes Risk Calculator**
 
-  * Computes metabolic risk scores
-  * Based on BMI, age, and symptoms
+  * Computes risk based on BMI, age, and symptoms
 
-* **🧠 Mental Health NLP Analysis**
+* **Mental Health Analysis**
 
-  * Analyzes free-form text
-  * Detects emotional distress patterns
+  * NLP-based emotional pattern detection
 
 ---
 
-### ⚡ High-Performance AI Engine
+### ⚡ Performance
 
-* Persistent Flask microservice
-* Preloaded ML models
-* Fast inference time (1–2 seconds)
-
----
-
-### 📊 Smart Clinical Reports
-
-* Structured triage reports
-* Risk bands and severity levels
-* Demographic-based insights
-* Print-ready format
+* Flask-based AI microservice
+* Preloaded models
+* Fast inference (1–2 seconds)
 
 ---
 
-### 🎨 Modern UI/UX
+### 📊 Clinical Reports
 
-* Dark and Light mode
-* Glassmorphism-inspired design
-* Clean, minimal interface
-* Built with Outfit font
+* Structured triage output
+* Risk levels and severity bands
+* Clean, printable format
+
+---
+
+### 🎨 UI/UX
+
+* Dark & Light mode
+* Minimal, modern interface
+* Built with React + Tailwind
 
 ---
 
 ### 🌍 Accessibility
 
-* Bilingual support:
-
-  * English
-  * Urdu
+* English
+* Urdu
 
 ---
 
 ### 🔒 Security
 
-* JWT-based authentication
-* Password hashing with bcrypt
-* Secure PostgreSQL storage
+* JWT authentication
+* Password hashing (bcrypt)
+* PostgreSQL database
 
 ---
 
 ## 🏗️ Architecture
 
-MediScan AI follows a three-tier scalable architecture:
+MediScan AI uses a **3-tier scalable architecture**:
 
-### 📌 Architecture Diagram
+### 📌 System Flow (Top → Down)
 
-```mermaid id="y3v2yq"
-flowchart LR
+```mermaid
+flowchart TD
 
-A[Frontend - React + Vite] -->|API Requests| B[Backend - Node.js Express]
+A[User / Browser] 
+    --> B[Frontend (React + Vite)]
 
-B -->|Auth + Business Logic| C[(PostgreSQL Database)]
+B -->|API Calls| C[Backend (Node.js + Express)]
 
-B -->|REST API Calls| D[AI Microservice - Flask]
+C -->|Auth & Logic| D[(PostgreSQL Database)]
 
-D -->|Loads Models| E[ML Models]
-E --> X1[X-Ray Model]
-E --> X2[Skin Model]
-E --> X3[Diabetes Model]
-E --> X4[Mental Health NLP Model]
+C -->|Requests| E[AI Microservice (Flask)]
 
-D -->|Prediction Results| B
-B -->|Response| A
+E --> F[ML Models]
+
+F --> F1[X-Ray Model]
+F --> F2[Skin Model]
+F --> F3[Diabetes Model]
+F --> F4[NLP Mental Health Model]
+
+E -->|Predictions| C
+C -->|Response| B
+B -->|UI Output| A
 ```
 
 ---
 
-### 💻 Frontend (Client)
+## 💻 Frontend
 
-* React 19 with Vite
-* Tailwind CSS v4
-* React Query and Context API
-* Shadcn UI and Radix UI
+* React 19 + Vite
+* Tailwind CSS
+* Context API & React Query
 
 ---
 
-### ⚙️ Backend (API Layer)
+## ⚙️ Backend
 
-* Node.js with Express (TypeScript)
-* PostgreSQL using pg
+* Node.js + Express (TypeScript)
+* PostgreSQL (`pg`)
 * JWT authentication
-* Acts as a bridge between frontend and AI microservice
+* API gateway for AI services
 
 ---
 
-### 🤖 AI Microservice
+## 🤖 AI Microservice
 
 * Python Flask
-* PyTorch and Transformers
-* TorchXRayVision
+* PyTorch + Transformers
 
-**📡 Exposed Endpoints:**
+### 📡 Endpoints
 
-```bash id="m7e6o2"
+```bash
 /analyze/xray
 /analyze/skin
 /analyze/diabetes
@@ -140,18 +137,18 @@ B -->|Response| A
 
 ## 🚀 Getting Started
 
-### ✅ Prerequisites
+### ✅ Requirements
 
-* Node.js (v18 or higher)
-* Python (3.11 or higher)
+* Node.js (v18+)
+* Python (3.11+)
 * PostgreSQL
 * Git
 
 ---
 
-## 🗄️ Database Setup
+## 🗄️ Database
 
-```sql id="w9k8xm"
+```sql
 CREATE DATABASE mediscan;
 ```
 
@@ -159,9 +156,7 @@ CREATE DATABASE mediscan;
 
 ## ⚙️ Environment Variables
 
-Create a `.env` file in the backend directory:
-
-```env id="8j8f0y"
+```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=mediscan
@@ -180,107 +175,78 @@ PYTHON_SERVICE_URL=http://localhost:5001
 
 ### Backend
 
-```bash id="7o0dfg"
+```bash
 cd backend
 npm install
 ```
 
 ### Frontend
 
-```bash id="7u4z7k"
+```bash
 cd frontend
 npm install
 ```
 
-### AI Microservice
+### AI Service
 
-```bash id="t3z1ke"
+```bash
 cd mediscan-models
 pip install -r requirements.txt
 ```
 
 ---
 
-## ▶️ Running the Application
+## ▶️ Run Application
 
-### 1️⃣ Start AI Service (Start First)
+### 1. Start AI Service
 
-```bash id="q6ktqt"
-cd mediscan-models
+```bash
 python server.py
 ```
 
-### 2️⃣ Start Backend
+### 2. Start Backend
 
-```bash id="x9yq9k"
-cd backend
+```bash
 npm run dev
 ```
 
-### 3️⃣ Start Frontend
+### 3. Start Frontend
 
-```bash id="rzn4g3"
-cd frontend
+```bash
 npm run dev
 ```
 
-🌐 Open in browser:
-
-```id="1h4p8v"
+Open:
+```
 http://localhost:5173
 ```
 
 ---
 
-## 📂 Project Structure
+## 📂 Structure
 
-```id="p2x1fz"
+```
 MediScan-AI/
-
 ├── backend/
-│   ├── src/
-│   │   └── index.ts
-│   └── package.json
-
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── contexts/
-│   │   ├── pages/
-│   │   │   └── App.tsx
-│   │   └── index.css
-│   └── package.json
-
 ├── mediscan-models/
-│   ├── diabetes-model/
-│   ├── triage_engine.py
-│   └── server.py
-
 └── README.md
 ```
 
 ---
 
-## 🤝 Contributing
+## 🔮 Future Work
 
-* Fork the repository
-* Create a feature branch
-* Submit a pull request
-
----
-
-## 🔮 Future Improvements
-
-* Real-time doctor integration
-* Mobile application
-* Expanded disease detection models
-* AI explainability dashboard
+* Doctor integration
+* Mobile app
+* More disease models
+* AI explainability
 
 ---
 
 ## 👩‍💻 Authors
 
-* **Nabiha Nasir**
-* **Zubair**
+* Nabiha Nasir
+* Zubair
 
-Cyber and Software Engineering Enthusiasts focused on building real-world AI systems in healthcare
+Cyber & Software Engineering Enthusiasts building AI solutions in healthcare
