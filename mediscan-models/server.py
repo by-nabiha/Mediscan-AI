@@ -63,7 +63,7 @@ def load_skin_model():
     global skin_processor, skin_model
     try:
         from transformers import AutoImageProcessor, AutoModelForImageClassification
-        model_name = "Anwarkh1/Skin_Disease-Image_Classification"
+        model_name = "Anwarkh1/Skin_Cancer-Image_Classification"
         print("[skin]: Loading skin disease classifier...")
         skin_processor = AutoImageProcessor.from_pretrained(model_name)
         skin_model = AutoModelForImageClassification.from_pretrained(model_name)
@@ -80,8 +80,8 @@ def load_diabetes_model():
         import pickle
         base_dir = os.path.join(os.path.dirname(__file__), "diabetes-model")
         model_path = os.path.join(base_dir, "diabetes_model.pkl")
-        scaler_path = os.path.join(base_dir, "scaler.pkl")
-        config_path = os.path.join(base_dir, "model_config.json")
+        scaler_path = os.path.join(base_dir, "diabetes_scaler.pkl")
+        config_path = os.path.join(base_dir, "diabetes_config.json")
 
         if os.path.exists(model_path):
             with open(model_path, "rb") as f:
@@ -150,7 +150,6 @@ def analyze_xray():
             "Lung Opacity", "Enlarged Cardiomediastinum"
         ]
 
-        # Run pneumonia model
         image = Image.open(image_path).convert("RGB")
         if xray_model and xray_processor:
             inputs = xray_processor(images=image, return_tensors="pt")
@@ -163,7 +162,6 @@ def analyze_xray():
 
         combined_result = {"Pneumonia": round(pneumonia_score, 2)}
 
-        # Run torchxrayvision model
         if xrv_model:
             img_pil = Image.open(image_path).convert("L")
             img_array = np.array(img_pil)
@@ -184,7 +182,6 @@ def analyze_xray():
             trusted_scores = {k: round(v, 2) for k, v in xrv_scores.items() if k in TRUSTED_DISEASES}
             combined_result.update(trusted_scores)
 
-        # Build tier1 results
         tier1_results = []
         for disease, score in combined_result.items():
             if disease in TIER1_THRESHOLDS:
@@ -267,7 +264,6 @@ def analyze_skin():
                 "clinical_note": f"Model is {confidence_score}% confident in {top['condition']}."
             })
         else:
-            # Fallback
             return jsonify({
                 "confidence_score": 82.5,
                 "top_condition": "Eczema",
@@ -303,7 +299,6 @@ def analyze_diabetes():
             prob = diabetes_model.predict_proba(X_scaled)[0][1]
             risk_percent = round(prob * 100, 2)
         else:
-            # Smart fallback based on inputs
             glucose = float(data.get("Glucose", 100))
             bmi = float(data.get("BMI", 25))
             prob = 0.15
@@ -354,7 +349,6 @@ def analyze_mental_health():
                 "all_scores": emotion_scores
             })
         else:
-            # Fallback
             risk_score = 85.0 if is_crisis_keyword else 25.0
             return jsonify({
                 "status": "mental_health_multi_emergency" if is_crisis_keyword else "send_to_triage",
