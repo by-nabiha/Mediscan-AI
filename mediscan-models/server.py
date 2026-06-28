@@ -78,7 +78,7 @@ def load_diabetes_model():
     global diabetes_model, diabetes_scaler, diabetes_config
     try:
         import pickle
-        base_dir = os.path.join(os.path.dirname(__file__), "ai-models", "diabetes-model")
+        base_dir = os.path.join(os.path.dirname(__file__), "diabetes-model")
         model_path = os.path.join(base_dir, "diabetes_model.pkl")
         scaler_path = os.path.join(base_dir, "scaler.pkl")
         config_path = os.path.join(base_dir, "model_config.json")
